@@ -1,14 +1,14 @@
 # The name of your plugin as displayed in the Plugins Catalog web UI.
-displayName: keycloakopenid
+displayName: traefik_openid
 
 # For now, `middleware` is the only type available.
 type: middleware
 
 # The import path of your plugin.
-import: github.com/Gwojda/keycloakopenid
+import: github.com/krombel/traefik_openid
 
 # A brief description of what your plugin is doing.
-summary: This plugin for Traefik allows it to authenticate requests against Keycloak. It utilizes the Keycloak's client credentials flow to retrieve an access token, which is then set as a bearer token in the Authorization header of the incoming requests. The plugin communicates with Keycloak using the OpenID Connect protocol.
+summary: This plugin for Traefik allows it to authenticate requests against an openid provider. It utilizes the OpenID well-known to identify the endpoints to do the login and tries to use JWKs to validate.
 
 # Medias associated to the plugin (optional)
 iconPath: foo/icon.png
@@ -18,7 +18,6 @@ bannerPath: foo/banner.png
 # This is mandatory,
 # and Plugins Catalog will try to execute the plugin with the data you provide as part of its startup validity tests.
 testData:
-  KeycloakURL: "my-keycloak-url.com"
+  ProviderURL: "my-keycloak-url.com/realms/my-realm"
   ClientID: "<CLIENT_ID"
   ClientSecret: "<CLIENT_SECRET"
-  KeycloakRealm: "<REALM"

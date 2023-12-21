@@ -1,4 +1,4 @@
-package keycloakopenid
+package traefik_openid
 
 import (
 	"context"
@@ -11,21 +11,20 @@ import (
 func TestServeHTTP(t *testing.T) {
 	// Setup
 	config := CreateConfig()
-	config.KeycloakURL = "auth.bochslerfinance.com"
-	config.KeycloakRealm = "bochsler"
-	config.ClientID = "keycloakMiddleware"
-	config.ClientSecret = "uc0yKKpQsOqhggsG4eK7mDU3glT81chn"
+	config.ProviderURL = "https://keycloak.vistameet.eu/realms/vm-dev01"
+	config.ClientID = "traefikMiddleware"
+	config.ClientSecret = "v3gztdimWH8yD2sn3b8ZUisbhvdQHsg7"
 
 	// Create a new instance of our middleware
-	keycloakMiddleware, err := New(context.TODO(), http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	openIDMiddleware, err := New(context.TODO(), http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
-	}), config, "keycloak-openid")
+	}), config, "openid")
 	if err != nil {
-		t.Fatal("Expected no error while creating keycloak middleware, got:", err)
+		t.Fatal("Expected no error while creating openid middleware, got:", err)
 	}
 
-	fmt.Printf("%+v\n", keycloakMiddleware)
-	req, err := http.NewRequest("GET", "http://guidelines.bochslerfinance.com/", nil)
+	fmt.Printf("%+v\n", openIDMiddleware)
+	req, err := http.NewRequest("GET", "https://vistameet.eu/", nil)
 	if err != nil {
 		t.Fatal("Expected no error while creating http request, got:", err)
 	}
@@ -33,7 +32,7 @@ func TestServeHTTP(t *testing.T) {
 	rw := httptest.NewRecorder()
 
 	// Test
-	keycloakMiddleware.ServeHTTP(rw, req)
+	openIDMiddleware.ServeHTTP(rw, req)
 
 	fmt.Printf("%+v\n", rw)
 	fmt.Printf("==>>>%+v\n", req)

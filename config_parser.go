@@ -1,4 +1,4 @@
-package keycloakopenid
+package traefik_openid
 
 import (
 	"context"
@@ -8,39 +8,34 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 type Config struct {
-	KeycloakURL    string `json:"url"`
+	ProviderURL    string `json:"url"`
 	ClientID       string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
-	KeycloakRealm  string `json:"keycloak_realm"`
 	UserClaimName  string `json:"user_claim_name"`
 	UserHeaderName string `json:"user_header_name"`
+	Scopes         string `json:"scopes"`
 
-	ClientIDFile      string `json:"client_id_file"`
-	ClientSecretFile  string `json:"client_secret_file"`
-	KeycloakURLEnv    string `json:"url_env"`
-	ClientIDEnv       string `json:"client_id_env"`
-	ClientSecretEnv   string `json:"client_secret_env"`
-	KeycloakRealmEnv  string `json:"keycloak_realm_env"`
+	ClientIDFile     string `json:"client_id_file"`
+	ClientSecretFile string `json:"client_secret_file"`
+	ProviderURLEnv   string `json:"url_env"`
+	ClientIDEnv      string `json:"client_id_env"`
+	ClientSecretEnv  string `json:"client_secret_env"`
 }
 
-type keycloakAuth struct {
+type oidcAuth struct {
 	next           http.Handler
-	KeycloakURL    *url.URL
+	ProviderURL    *url.URL
 	ClientID       string
 	ClientSecret   string
-	KeycloakRealm  string
+	Scopes         []string
 	UserClaimName  string
 	UserHeaderName string
-}
-
-type KeycloakTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
+	OidcProvider   *oidc.Provider
 }
 
 type state struct {
@@ -93,12 +88,12 @@ func readSecretFiles(config *Config) error {
 }
 
 func readConfigEnv(config *Config) error {
-	if config.KeycloakURLEnv != "" {
-		keycloakUrl := os.Getenv(config.KeycloakURLEnv)
-		if keycloakUrl == "" {
-			return errors.New("KeycloakURLEnv referenced but NOT set")
+	if config.ProviderURLEnv != "" {
+		providerURL := os.Getenv(config.ProviderURLEnv)
+		if providerURL == "" {
+			return errors.New("ProviderURLEnv referenced but NOT set")
 		}
-		config.KeycloakURL = strings.TrimSpace(keycloakUrl)
+		config.ProviderURL = strings.TrimSpace(providerURL)
 	}
 	if config.ClientIDEnv != "" {
 		clientId := os.Getenv(config.ClientIDEnv)
@@ -114,13 +109,6 @@ func readConfigEnv(config *Config) error {
 		}
 		config.ClientSecret = strings.TrimSpace(clientSecret)
 	}
-	if config.KeycloakRealmEnv != "" {
-		keycloakRealm := os.Getenv(config.KeycloakRealmEnv)
-		if keycloakRealm == "" {
-			return errors.New("KeycloakRealmEnv referenced but NOT set")
-		}
-		config.KeycloakRealm = strings.TrimSpace(keycloakRealm)
-	}
 	return nil
 }
 
@@ -134,13 +122,28 @@ func New(uctx context.Context, next http.Handler, config *Config, name string) (
 		return nil, err
 	}
 
-	if config.ClientID == "" || config.KeycloakRealm == "" {
+	if config.ClientID == "" {
 		return nil, errors.New("invalid configuration")
 	}
 
-	parsedURL, err := parseUrl(config.KeycloakURL)
+	parsedURL, err := parseUrl(config.ProviderURL)
 	if err != nil {
 		return nil, err
+	}
+
+	oidcProvider, err := oidc.NewProvider(uctx, parsedURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	var scopes []string
+	if len(config.Scopes) > 0 {
+		scopes = strings.Split(config.Scopes, " ")
+	} else {
+		scopes = []string{oidc.ScopeOpenID}
+	}
+	if scopes[0] != oidc.ScopeOpenID {
+		return nil, errors.New("scope need to start with " + oidc.ScopeOpenID)
 	}
 
 	userClaimName := "preferred_username"
@@ -153,13 +156,13 @@ func New(uctx context.Context, next http.Handler, config *Config, name string) (
 		userHeaderName = config.UserHeaderName
 	}
 
-	return &keycloakAuth{
-		next:          next,
-		KeycloakURL:   parsedURL,
-		ClientID:      config.ClientID,
-		ClientSecret:  config.ClientSecret,
-		KeycloakRealm: config.KeycloakRealm,
-		UserClaimName: userClaimName,
+	return &oidcAuth{
+		next:           next,
+		ProviderURL:    parsedURL,
+		ClientID:       config.ClientID,
+		ClientSecret:   config.ClientSecret,
+		UserClaimName:  userClaimName,
 		UserHeaderName: userHeaderName,
+		OidcProvider:   oidcProvider,
 	}, nil
 }
