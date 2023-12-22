@@ -2,6 +2,19 @@
 
 This OpenID authentication plugin is a middleware for Go applications, which manages user authentication using OpenID, an open-source identity and access management solution.
 
+## State:
+This is currently broken.
+This are the relevant issues:
+- go-jose: https://github.com/go-jose/go-jose/issues/56
+- protobuf (a dependency of oauth2) uses "unsafe" dependency which is not possible currently. When trying to import this there is the following error:
+```
+import "unsafe" error: unable to find source related to: "unsafe"
+```
+Just a few related issues to this topic:
+- https://github.com/traefik/traefik/issues/8844
+- https://github.com/traefik/traefik/issues/7459 (closed by not fixed)
+This is related to e.g. this issue https://github.com/traefik/yaegi/issues/1588
+
 ## Attribution:
 
 This is mainly a generalization of https://github.com/Gwojda/keycloakopenid to support OpenID Providers including keycloak

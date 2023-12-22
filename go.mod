@@ -9,8 +9,7 @@ require (
 
 require (
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
 )
+
+replace golang.org/x/oauth2 v0.15.0 => gitea.krombel.de/krombel/oauth2 v0.15.0-1
