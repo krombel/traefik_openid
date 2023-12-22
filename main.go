@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"golang.org/x/oauth2"
 )
 
 func (k *oidcAuth) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -118,14 +117,9 @@ func (k *oidcAuth) exchangeAuthCode(req *http.Request, authCode string, stateBas
 		return "", err
 	}
 
-	cfg := oauth2.Config{
-		ClientID:     k.ClientID,
-		ClientSecret: k.ClientSecret,
-		Endpoint:     k.OidcProvider.Endpoint(),
-		RedirectURL:  state.RedirectURL,
-		Scopes:       k.Scopes,
-	}
-	token, err := cfg.Exchange(req.Context(), authCode)
+	// we have a dynamic redirect URL so set this (but allow reusing the config object for internal caches)
+	k.OAuth2Config.RedirectURL = state.RedirectURL
+	token, err := k.OAuth2Config.Exchange(req.Context(), authCode)
 
 	idToken := token.Extra("id_token").(string)
 	if len(idToken) > 0 {
@@ -148,15 +142,9 @@ func (k *oidcAuth) redirectToOpenIDProvider(rw http.ResponseWriter, req *http.Re
 	stateBytes, _ := json.Marshal(state)
 	stateBase64 := base64.StdEncoding.EncodeToString(stateBytes)
 
-	cfg := oauth2.Config{
-		ClientID:     k.ClientID,
-		ClientSecret: k.ClientSecret,
-		Endpoint:     k.OidcProvider.Endpoint(),
-		RedirectURL:  state.RedirectURL,
-		Scopes:       k.Scopes,
-	}
-
-	http.Redirect(rw, req, cfg.AuthCodeURL(stateBase64), http.StatusFound)
+	// we have a dynamic redirect URL so set this (but allow reusing the config object for internal caches)
+	k.OAuth2Config.RedirectURL = state.RedirectURL
+	http.Redirect(rw, req, k.OAuth2Config.AuthCodeURL(stateBase64), http.StatusFound)
 }
 
 func (k *oidcAuth) verifyToken(ctx context.Context, token string) (*oidc.IDToken, error) {

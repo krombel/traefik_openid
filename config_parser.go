@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
 type Config struct {
@@ -36,6 +37,7 @@ type oidcAuth struct {
 	UserClaimName  string
 	UserHeaderName string
 	OidcProvider   *oidc.Provider
+	OAuth2Config   *oauth2.Config
 }
 
 type state struct {
@@ -145,6 +147,12 @@ func New(uctx context.Context, next http.Handler, config *Config, name string) (
 	if scopes[0] != oidc.ScopeOpenID {
 		return nil, errors.New("scope need to start with " + oidc.ScopeOpenID)
 	}
+	oAuth2Config := oauth2.Config{
+		ClientID:     config.ClientID,
+		ClientSecret: config.ClientSecret,
+		Endpoint:     oidcProvider.Endpoint(),
+		Scopes:       scopes,
+	}
 
 	userClaimName := "preferred_username"
 	if config.UserClaimName != "" {
@@ -164,5 +172,6 @@ func New(uctx context.Context, next http.Handler, config *Config, name string) (
 		UserClaimName:  userClaimName,
 		UserHeaderName: userHeaderName,
 		OidcProvider:   oidcProvider,
+		OAuth2Config:   &oAuth2Config,
 	}, nil
 }
