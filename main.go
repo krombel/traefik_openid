@@ -21,7 +21,7 @@ func (k *oidcAuth) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		idToken, err := k.verifyToken(req.Context(), token)
 		fmt.Printf("ok = %+v\n", idToken != nil)
-		if err != nil {
+		if err != nil && !errors.Is(err, oidc.ErrTokenExpired) {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -148,9 +148,12 @@ func (k *oidcAuth) redirectToOpenIDProvider(rw http.ResponseWriter, req *http.Re
 }
 
 func (k *oidcAuth) verifyToken(ctx context.Context, token string) (*oidc.IDToken, error) {
-	idToken, err := k.OidcProvider.Verifier(&oidc.Config{
-		ClientID: k.ClientID,
-	}).Verify(ctx, token)
+	idToken, err := k.OidcProvider.Verifier(
+		&oidc.Config{
+			ClientID:                   k.ClientID,
+			InsecureSkipSignatureCheck: true,
+		},
+	).Verify(ctx, token)
 
 	return idToken, err
 }

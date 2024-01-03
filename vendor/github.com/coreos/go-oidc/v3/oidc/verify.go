@@ -24,14 +24,7 @@ const (
 // TokenExpiredError indicates that Verify failed because the token was expired. This
 // error does NOT indicate that the token is not also invalid for other reasons. Other
 // checks might have failed if the expiration check had not failed.
-type TokenExpiredError struct {
-	// Expiry is the time when the token expired.
-	Expiry time.Time
-}
-
-func (e *TokenExpiredError) Error() string {
-	return fmt.Sprintf("oidc: token is expired (Token Expiry: %v)", e.Expiry)
-}
+var ErrTokenExpired = errors.New("oidc: token is expired")
 
 // KeySet is a set of publc JSON Web Keys that can be used to validate the signature
 // of JSON web tokens. This is expected to be backed by a remote key set through
@@ -232,7 +225,7 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 
 	distributedClaims := make(map[string]claimSource)
 
-	//step through the token to map claim names to claim sources"
+	// step through the token to map claim names to claim sources"
 	for cn, src := range token.ClaimNames {
 		if src == "" {
 			return nil, fmt.Errorf("oidc: failed to obtain source from claim name")
@@ -247,9 +240,9 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 	t := &IDToken{
 		Issuer:            token.Issuer,
 		Subject:           token.Subject,
-		Audience:          []string(token.Audience),
-		Expiry:            time.Time(token.Expiry),
-		IssuedAt:          time.Time(token.IssuedAt),
+		Audience:          ParseAudiences(token.Audience),
+		Expiry:            token.Expiry.Time(),
+		IssuedAt:          token.IssuedAt.Time(),
 		Nonce:             token.Nonce,
 		AccessTokenHash:   token.AtHash,
 		claims:            payload,
@@ -290,12 +283,12 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 		nowTime := now()
 
 		if t.Expiry.Before(nowTime) {
-			return nil, &TokenExpiredError{Expiry: t.Expiry}
+			return nil, ErrTokenExpired
 		}
 
 		// If nbf claim is provided in token, ensure that it is indeed in the past.
 		if token.NotBefore != nil {
-			nbfTime := time.Time(*token.NotBefore)
+			nbfTime := token.NotBefore.Time()
 			// Set to 5 minutes since this is what other OpenID Connect providers do to deal with clock skew.
 			// https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/6.12.2/src/Microsoft.IdentityModel.Tokens/TokenValidationParameters.cs#L149-L153
 			leeway := 5 * time.Minute
@@ -353,4 +346,16 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 // OpenID Connect provider to contain the specified nonce.
 func Nonce(nonce string) oauth2.AuthCodeOption {
 	return oauth2.SetAuthURLParam("nonce", nonce)
+}
+
+func ParseAudiences(b json.RawMessage) []string {
+	var s string
+	if json.Unmarshal(b, &s) == nil {
+		return []string{s}
+	}
+	var auds []string
+	if err := json.Unmarshal(b, &auds); err != nil {
+		return nil
+	}
+	return auds
 }

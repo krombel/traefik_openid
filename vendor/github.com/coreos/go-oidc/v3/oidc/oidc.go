@@ -473,10 +473,10 @@ func (i *IDToken) VerifyAccessToken(accessToken string) error {
 type idToken struct {
 	Issuer       string                 `json:"iss"`
 	Subject      string                 `json:"sub"`
-	Audience     audience               `json:"aud"`
+	Audience     json.RawMessage        `json:"aud"` // will be parsed later
 	Expiry       jsonTime               `json:"exp"`
 	IssuedAt     jsonTime               `json:"iat"`
-	NotBefore    *jsonTime              `json:"nbf"`
+	NotBefore    *jsonTime              `json:"nbf,omitempty"`
 	Nonce        string                 `json:"nonce"`
 	AtHash       string                 `json:"at_hash"`
 	ClaimNames   map[string]string      `json:"_claim_names"`
@@ -518,7 +518,7 @@ func (a *audience) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type jsonTime time.Time
+type jsonTime int64
 
 func (j *jsonTime) UnmarshalJSON(b []byte) error {
 	var n json.Number
@@ -536,8 +536,12 @@ func (j *jsonTime) UnmarshalJSON(b []byte) error {
 		}
 		unix = int64(f)
 	}
-	*j = jsonTime(time.Unix(unix, 0))
+	*j = jsonTime(unix)
 	return nil
+}
+
+func (j jsonTime) Time() time.Time {
+	return time.Unix(int64(j), 0)
 }
 
 func unmarshalResp(r *http.Response, body []byte, v interface{}) error {

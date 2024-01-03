@@ -3,17 +3,16 @@
 This OpenID authentication plugin is a middleware for Go applications, which manages user authentication using OpenID, an open-source identity and access management solution.
 
 ## State:
-This is currently broken.
+This is currently broken with upstream dependencies.
 This are the relevant issues:
-- go-jose: https://github.com/go-jose/go-jose/issues/56
+- go-jose: https://github.com/go-jose/go-jose/issues/56 (patched by changes mentioned in linked issue)
 - protobuf (a dependency of oauth2) uses "unsafe" dependency which is not possible currently. When trying to import this there is the following error:
 ```
 import "unsafe" error: unable to find source related to: "unsafe"
 ```
-Just a few related issues to this topic:
-- https://github.com/traefik/traefik/issues/8844
-- https://github.com/traefik/traefik/issues/7459 (closed by not fixed)
-This is related to e.g. this issue https://github.com/traefik/yaegi/issues/1588
+- https://github.com/traefik/traefik/issues/7459 (closed by not fixed) => a patched version is vendored to resolve this issue
+- https://github.com/traefik/yaegi/issues/1603 (function overloading does not work) => vendored version of go-oidc patched to not overload UnmarshalJSON
+- https://github.com/traefik/yaegi/issues/1502 (go-jose not usable) => Disabled JWT signature check (UNSECURE!!)
 
 ## Attribution:
 
